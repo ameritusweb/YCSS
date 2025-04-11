@@ -1,0 +1,49 @@
+.
+├── src/
+│   ├── Meritocious.StyleAnalyzer/
+│   │   ├── Analysis/
+│   │   │   ├── StyleCluster.cs
+│   │   │   ├── HierarchicalPatternDetector.cs
+│   │   │   └── ClusterAnalyzer.cs
+│   │   ├── Output/
+│   │   │   ├── IOutputFormatter.cs
+│   │   │   ├── MarkdownFormatter.cs
+│   │   │   ├── JsonFormatter.cs
+│   │   │   └── DotFormatter.cs
+│   │   └── Meritocious.StyleAnalyzer.csproj
+│   │
+│   └── Meritocious.StyleAnalyzer.Cli/
+│       ├── Program.cs
+│       └── Meritocious.StyleAnalyzer.Cli.csproj
+│
+├── tests/
+│   └── Meritocious.StyleAnalyzer.Tests/
+│       ├── TestData/
+│       │   └── sample-styles.yaml
+│       ├── Analysis/
+│       │   └── HierarchicalPatternDetectorTests.cs
+│       └── Output/
+│           └── FormatterTests.cs
+│
+├── .gitignore
+├── README.md
+└── Meritocious.StyleAnalyzer.sln
+
+# Meritocious.StyleAnalyzer.Cli.csproj
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net7.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <PackAsTool>true</PackAsTool>
+    <ToolCommandName>style-analyzer</ToolCommandName>
+    <PackageOutputPath>./nupkg</PackageOutputPath>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="System.CommandLine" Version="2.0.0-beta*" />
+    <PackageReference Include="YamlDotNet" Version="13.1.1" />
+    <ProjectReference Include="..\Meritocious.StyleAnalyzer\Meritocious.StyleAnalyzer.csproj" />
+  </ItemGroup>
+</Project>
