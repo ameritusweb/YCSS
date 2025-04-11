@@ -1,0 +1,188 @@
+using System.CommandLine;
+using System.Text.Json;
+using YamlDotNet.Serialization;
+
+namespace Meritocious.StyleAnalyzer.Cli;
+
+public class Program
+{
+    public static async Task<int> Main(string[] args)
+    {
+        var fileOption = new Option<FileInfo>(
+            name: "--file",
+            description: "The YAML file containing styles to analyze")
+        { IsRequired = true };
+
+        var outOption = new Option<FileInfo>(
+            name: "--out",
+            description: "Output file path");
+
+        var formatOption = new Option<string>(
+            name: "--format",
+            description: "Output format (md, json, dot)",
+            getDefaultValue: () => "md");
+
+        var verboseOption = new Option<bool>(
+            name: "--verbose",
+            description: "Show detailed analysis information",
+            getDefaultValue: () => false);
+
+        var rootCommand = new RootCommand("Style Pattern Analyzer")
+        {
+            fileOption,
+            outOption,
+            formatOption,
+            verboseOption
+        };
+
+        rootCommand.SetHandler(async (file, output, format, verbose) =>
+        {
+            try
+            {
+                await AnalyzeFile(file, output, format, verbose);
+            }
+            catch (Exception ex)
+            {
+                Console.Error.WriteLine($"Error: {ex.Message}");
+                Environment.Exit(1);
+            }
+        }, fileOption, outOption, formatOption, verboseOption);
+
+        return await rootCommand.InvokeAsync(args);
+    }
+
+    private static async Task AnalyzeFile(
+        FileInfo input, 
+        FileInfo? output, 
+        string format,
+        bool verbose)
+    {
+        // Read and parse YAML
+        var deserializer = new DeserializerBuilder().Build();
+        var yaml = await File.ReadAllTextAsync(input.FullName);
+        var styles = deserializer.Deserialize<Dictionary<string, object>>(yaml);
+
+        // Analyze patterns
+        var detector = new HierarchicalPatternDetector();
+        var clusters = detector.FindPatternHierarchy(styles);
+
+        // Create output
+        var formatter = GetFormatter(format);
+        var result = formatter.Format(clusters);
+
+        // Write output
+        if (output != null)
+        {
+            await File.WriteAllTextAsync(output.FullName, result);
+            if (verbose)
+            {
+                Console.WriteLine($"Analysis written to {output.FullName}");
+            }
+        }
+        else
+        {
+            Console.WriteLine(result);
+        }
+    }
+
+    private static IOutputFormatter GetFormatter(string format) => format.ToLower() switch
+    {
+        "md" => new MarkdownFormatter(),
+        "json" => new JsonFormatter(),
+        "dot" => new DotFormatter(),
+        _ => throw new ArgumentException($"Unsupported format: {format}")
+    };
+}
+
+public interface IOutputFormatter
+{
+    string Format(List<StyleCluster> clusters);
+}
+
+public class MarkdownFormatter : IOutputFormatter
+{
+    public string Format(List<StyleCluster> clusters)
+    {
+        var writer = new StringWriter();
+        writer.WriteLine("# Style Pattern Analysis\n");
+        FormatClusters(clusters, writer);
+        return writer.ToString();
+    }
+
+    private void FormatClusters(List<StyleCluster> clusters, TextWriter writer, int level = 0)
+    {
+        foreach (var cluster in clusters)
+        {
+            var prefix = new string('#', level + 2);
+            writer.WriteLine($"{prefix} Pattern (Cohesion: {cluster.Cohesion:F2})\n");
+            
+            writer.WriteLine("**Properties:**\n");
+            foreach (var prop in cluster.Properties)
+            {
+                writer.WriteLine($"- `{prop}`");
+            }
+            writer.WriteLine();
+
+            writer.WriteLine("**Common Values:**\n");
+            foreach (var value in cluster.Values.Take(5))
+            {
+                writer.WriteLine($"- `{value}`");
+            }
+            writer.WriteLine();
+
+            if (cluster.Children.Any())
+            {
+                writer.WriteLine("**Sub-patterns:**\n");
+                FormatClusters(cluster.Children, writer, level + 1);
+            }
+
+            writer.WriteLine("---\n");
+        }
+    }
+}
+
+public class JsonFormatter : IOutputFormatter
+{
+    public string Format(List<StyleCluster> clusters)
+    {
+        var options = new JsonSerializerOptions
+        {
+            WriteIndented = true
+        };
+        return JsonSerializer.Serialize(clusters, options);
+    }
+}
+
+public class DotFormatter : IOutputFormatter
+{
+    public string Format(List<StyleCluster> clusters)
+    {
+        var writer = new StringWriter();
+        writer.WriteLine("digraph StylePatterns {");
+        writer.WriteLine("  node [shape=box];");
+        
+        foreach (var cluster in clusters)
+        {
+            FormatCluster(cluster, writer);
+        }
+        
+        writer.WriteLine("}");
+        return writer.ToString();
+    }
+
+    private void FormatCluster(StyleCluster cluster, TextWriter writer)
+    {
+        var id = cluster.Id;
+        var label = string.Join("\\n", 
+            $"Pattern ({cluster.Cohesion:F2})",
+            ...cluster.Properties.Take(3).Select(p => p));
+
+        writer.WriteLine($"  {id} [label=\"{label}\"];");
+
+        foreach (var child in cluster.Children)
+        {
+            writer.WriteLine($"  {id} -> {child.Id};");
+            FormatCluster(child, writer);
+        }
+    }
+}
