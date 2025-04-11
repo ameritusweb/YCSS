@@ -1,0 +1,152 @@
+public class Program
+{
+    public static async Task<int> Main(string[] args)
+    {
+        var rootCommand = new RootCommand("Style System Compiler and Analyzer");
+
+        // analyze command
+        var analyzeCommand = new Command("analyze", "Analyze styles for patterns");
+        analyzeCommand.AddOption(new Option<FileInfo>(
+            "--file",
+            "The YAML file containing styles to analyze") { IsRequired = true });
+        analyzeCommand.AddOption(new Option<FileInfo>(
+            "--out",
+            "Output file path"));
+        analyzeCommand.AddOption(new Option<string>(
+            "--format",
+            () => "md",
+            "Output format (md, json, dot)"));
+        
+        analyzeCommand.SetHandler(HandleAnalyze);
+
+        // build command
+        var buildCommand = new Command("build", "Compile styles to CSS/SCSS");
+        buildCommand.AddOption(new Option<FileInfo>(
+            "--file",
+            "The YAML file containing styles to compile") { IsRequired = true });
+        buildCommand.AddOption(new Option<FileInfo>(
+            "--out",
+            "Output file path") { IsRequired = true });
+        buildCommand.AddOption(new Option<string>(
+            "--format",
+            () => "css",
+            "Output format (css, scss, tailwind, tokens)"));
+        buildCommand.AddOption(new Option<bool>(
+            "--tokens-only",
+            "Output only design tokens"));
+        buildCommand.AddOption(new Option<bool>(
+            "--optimize",
+            "Optimize output CSS"));
+        buildCommand.AddOption(new Option<string>(
+            "--theme",
+            "Theme name to apply"));
+        buildCommand.AddOption(new Option<bool>(
+            "--utilities",
+            "Generate utility classes"));
+        
+        buildCommand.SetHandler(HandleBuild);
+
+        rootCommand.AddCommand(analyzeCommand);
+        rootCommand.AddCommand(buildCommand);
+
+        return await rootCommand.InvokeAsync(args);
+    }
+
+    private static async Task HandleAnalyze(FileInfo file, FileInfo? output, string format)
+    {
+        var deserializer = new DeserializerBuilder().Build();
+        var yaml = await File.ReadAllTextAsync(file.FullName);
+        var styles = deserializer.Deserialize<Dictionary<string, object>>(yaml);
+
+        var detector = new HierarchicalPatternDetector();
+        var clusters = detector.FindPatternHierarchy(styles);
+
+        var formatter = GetAnalysisFormatter(format);
+        var result = formatter.Format(clusters);
+
+        if (output != null)
+        {
+            await File.WriteAllTextAsync(output.FullName, result);
+        }
+        else
+        {
+            Console.WriteLine(result);
+        }
+    }
+
+    private static async Task HandleBuild(
+        FileInfo file,
+        FileInfo output,
+        string format,
+        bool tokensOnly,
+        bool optimize,
+        string? theme,
+        bool utilities)
+    {
+        var deserializer = new DeserializerBuilder().Build();
+        var yaml = await File.ReadAllTextAsync(file.FullName);
+        var styles = deserializer.Deserialize<StyleDefinition>(yaml);
+
+        var compiler = new StyleCompiler();
+        var options = new CompilerOptions
+        {
+            Format = ParseFormat(format),
+            TokensOnly = tokensOnly,
+            Optimize = optimize,
+            Theme = theme,
+            UseUtilities = utilities
+        };
+
+        var result = compiler.CompileStyles(styles, options);
+        await File.WriteAllTextAsync(output.FullName, result);
+    }
+
+    private static OutputFormat ParseFormat(string format) => format.ToLower() switch
+    {
+        "css" => OutputFormat.CSS,
+        "scss" => OutputFormat.SCSS,
+        "tailwind" => OutputFormat.Tailwind,
+        "tokens" => OutputFormat.Tokens,
+        _ => throw new ArgumentException($"Unsupported format: {format}")
+    };
+}
+
+// Example YAML input:
+/*
+tokens:
+  color-primary: "#1f2937"
+  spacing-lg: "2rem"
+
+components:
+  button:
+    class: btn
+    styles:
+      background-color: var(--color-primary)
+      padding: var(--spacing-lg)
+    variants:
+      large:
+        padding: calc(var(--spacing-lg) * 1.5)
+      small:
+        padding: calc(var(--spacing-lg) * 0.5)
+*/
+
+// Generated CSS output:
+/*
+:root {
+  --color-primary: #1f2937;
+  --spacing-lg: 2rem;
+}
+
+.btn {
+  background-color: var(--color-primary);
+  padding: var(--spacing-lg);
+}
+
+.btn--large {
+  padding: calc(var(--spacing-lg) * 1.5);
+}
+
+.btn--small {
+  padding: calc(var(--spacing-lg) * 0.5);
+}
+*/
