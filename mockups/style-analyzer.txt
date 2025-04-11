@@ -1,0 +1,49 @@
+public class StyleAnalyzer
+{
+    public void AnalyzeAndSuggest(Dictionary<string, object> styles)
+    {
+        var detector = new GeneralPatternDetector();
+        var analysis = detector.AnalyzeStyles(styles);
+
+        // Analyze property patterns
+        foreach (var (name, pattern) in analysis.PropertyPatterns)
+        {
+            Console.WriteLine($"""
+                Found Property Pattern: {name}
+                Frequency: {pattern.Frequency} occurrences
+                Cohesion: {pattern.Cohesion:P0}
+                Properties:
+                {string.Join("\n", pattern.Properties.Select(p => $"  {p.Key}: {string.Join(", ", p.Value)}"))}
+                
+                Suggestion: Consider creating a utility class for these commonly co-occurring properties
+                """);
+        }
+
+        // Analyze value patterns
+        foreach (var (name, pattern) in analysis.ValuePatterns
+            .Where(p => p.Value.Frequency >= 3))
+        {
+            Console.WriteLine($"""
+                Found Value Pattern: {name}
+                Value: {pattern.Value}
+                Used {pattern.Frequency} times in properties:
+                {string.Join(", ", pattern.Properties)}
+                
+                Suggestion: Consider creating a CSS variable for this frequently used value
+                """);
+        }
+
+        // Analyze strong correlations
+        foreach (var (pair, correlation) in analysis.PropertyCorrelations
+            .Where(c => c.Value > 0.8))
+        {
+            var props = pair.Split('|');
+            Console.WriteLine($"""
+                Strong Correlation Found:
+                {props[0]} and {props[1]} appear together {correlation:P0} of the time
+                
+                Suggestion: These properties might belong in a shared mixin
+                """);
+        }
+    }
+}
