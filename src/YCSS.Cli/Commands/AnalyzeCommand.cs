@@ -1,4 +1,5 @@
 ﻿using Microsoft.Extensions.DependencyInjection;
+using Spectre.Console;
 using System;
 using System.Collections.Generic;
 using System.CommandLine;
@@ -7,6 +8,8 @@ using System.Text;
 using System.Threading.Tasks;
 using YCSS.Cli.Common;
 using YCSS.Cli.Utils;
+using YCSS.Core.Compilation.Formatters;
+using YCSS.Core.Interfaces;
 using YCSS.Core.Pipeline;
 
 namespace YCSS.Cli.Commands

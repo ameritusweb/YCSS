@@ -10,6 +10,8 @@ using System.Text;
 using System.Threading.Tasks;
 using YCSS.Cli.Common;
 using YCSS.Cli.Utils;
+using YCSS.Core.Pipeline;
+using YCSS.Core.Interfaces;
 
 namespace YCSS.Cli.Commands
 {
@@ -118,7 +120,8 @@ namespace YCSS.Cli.Commands
                                 }
                                 catch
                                 {
-                                    _connectedClients.TryRemove(client, out _);
+                                    bool res;
+                                    _connectedClients.TryRemove(client, out res);
                                 }
                             }
 
