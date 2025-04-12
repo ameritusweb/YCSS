@@ -22,7 +22,8 @@ _A dose of cure for all your CSS symptoms._
 - Style clustering       - BEM compliance          - Justification scores   - Auto-refactor engine  
 - Similarity scoring     - Naming suggestions      - Dead code detection    - Code mod generation  
 - Merge recommendations  - Semantic refactors      - Risk analysis          - YAML + Razor refactors
-
+- CSS variable extraction
+- Design token suggestion  
 
                            +-------------------------------+
                            | Office of Semantic Mapping    |
