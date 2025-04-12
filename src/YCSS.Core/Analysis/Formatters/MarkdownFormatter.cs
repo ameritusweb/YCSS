@@ -5,11 +5,11 @@ using System.Text;
 using System.Threading.Tasks;
 using YCSS.Core.Analysis.Clustering;
 
-namespace YCSS.Core.Compilation.Formatters
+namespace YCSS.Core.Analysis.Formatters
 {
-    public class MarkdownFormatter : IOutputFormatter
+    public class MarkdownFormatter : BaseAnalysisFormatter
     {
-        public string Format(List<StyleCluster> clusters)
+        public override string Format(List<StyleCluster> clusters)
         {
             var writer = new StringWriter();
             writer.WriteLine("# Style Pattern Analysis\n");
@@ -25,17 +25,11 @@ namespace YCSS.Core.Compilation.Formatters
                 writer.WriteLine($"{prefix} Pattern (Cohesion: {cluster.Cohesion:F2})\n");
 
                 writer.WriteLine("**Properties:**\n");
-                foreach (var prop in cluster.Properties)
-                {
-                    writer.WriteLine($"- `{prop}`");
-                }
+                writer.WriteLine(FormatClusterProperties(cluster));
                 writer.WriteLine();
 
                 writer.WriteLine("**Common Values:**\n");
-                foreach (var value in cluster.Values.Take(5))
-                {
-                    writer.WriteLine($"- `{value}`");
-                }
+                writer.WriteLine(FormatClusterValues(cluster));
                 writer.WriteLine();
 
                 if (cluster.Children.Any())

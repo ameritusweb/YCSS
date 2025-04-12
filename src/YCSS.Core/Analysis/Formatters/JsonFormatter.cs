@@ -6,11 +6,11 @@ using System.Text.Json;
 using System.Threading.Tasks;
 using YCSS.Core.Analysis.Clustering;
 
-namespace YCSS.Core.Compilation.Formatters
+namespace YCSS.Core.Analysis.Formatters
 {
-    public class JsonFormatter : IOutputFormatter
+    public class JsonFormatter : BaseAnalysisFormatter
     {
-        public string Format(List<StyleCluster> clusters)
+        public override string Format(List<StyleCluster> clusters)
         {
             var options = new JsonSerializerOptions
             {

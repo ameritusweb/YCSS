@@ -178,9 +178,9 @@ namespace YCSS.Core.Utils
             return style;
         }
 
-        private List<StyleDefinition> ParseStyles(YamlSequenceNode stylesNode)
+        private List<StylePropertyDefinition> ParseStyles(YamlSequenceNode stylesNode)
         {
-            var styles = new List<StyleDefinition>();
+            var styles = new List<StylePropertyDefinition>();
 
             foreach (var styleNode in stylesNode)
             {
@@ -188,7 +188,7 @@ namespace YCSS.Core.Utils
                 {
                     foreach (var prop in styleDef.Children)
                     {
-                        styles.Add(new StyleDefinition
+                        styles.Add(new StylePropertyDefinition
                         {
                             Property = ((YamlScalarNode)prop.Key).Value,
                             Value = ((YamlScalarNode)prop.Value).Value

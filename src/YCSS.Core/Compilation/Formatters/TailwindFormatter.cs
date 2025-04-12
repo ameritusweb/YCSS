@@ -204,38 +204,90 @@ namespace YCSS.Core.Compilation.Formatters
         }
 
         private void WriteComponent(
-            StringBuilder sb,
-            string name,
-            ComponentDefinition component,
-            FormatterContext context)
+    StringBuilder sb,
+    string name,
+    ComponentDefinition component,
+    FormatterContext context)
         {
-            var className = component.Class ?? name;
+            var className = component.Base?.Class ?? name;
 
-            sb.AppendLine($"/* Component: {className} */");
+            if (context.IncludeComments)
+            {
+                sb.AppendLine($"/* Component: {className} */");
+            }
+
             sb.AppendLine($"@layer components {{");
             sb.AppendLine($"  .{className} {{");
-            WriteStyles(sb, component.Styles, "    ");
+
+            // Write base styles
+            if (component.Base != null)
+            {
+                WriteStyles(sb, component.Base.Styles, "    ", context);
+            }
 
             // Write variants
-            foreach (var (variantName, styles) in component.Variants)
+            foreach (var (variantName, variant) in component.Variants)
             {
                 sb.AppendLine($"    &--{variantName} {{");
-                WriteStyles(sb, styles, "      ");
+                WriteStyles(sb, variant.Styles, "      ", context);
                 sb.AppendLine("    }");
             }
 
-            // Write child components
-            foreach (var (childName, child) in component.Children)
+            // Write parts (child components)
+            foreach (var (partName, part) in component.Parts)
             {
-                var childClass = child.Class ?? $"{className}__{childName}";
-                sb.AppendLine($"    .{childClass} {{");
-                WriteComponentBase(sb, child, "      ");
+                var partClass = part.Class ?? $"{className}__{partName}";
+                sb.AppendLine($"    .{partClass} {{");
+                WriteComponentBase(sb, part, "      ", context);
                 sb.AppendLine("    }");
             }
 
             sb.AppendLine("  }");
             sb.AppendLine("}");
-            sb.AppendLine();
+
+            if (!context.Minify)
+            {
+                sb.AppendLine();
+            }
+        }
+
+        private void WriteComponentBase(
+            StringBuilder sb,
+            ComponentBaseDefinition component,
+            string indent,
+            FormatterContext context)
+        {
+            WriteStyles(sb, component.Styles, indent, context);
+
+            // Write media queries
+            foreach (var (query, styles) in component.MediaQueries)
+            {
+                sb.AppendLine($"{indent}['@media {query}']: {{");
+                foreach (var (prop, value) in styles)
+                {
+                    var tailwindProp = ConvertToTailwindProperty(prop);
+                    var tailwindValue = ConvertToTailwindValue(value);
+                    sb.AppendLine(context.Minify
+                        ? $"{indent}  {tailwindProp}:'{tailwindValue}',"
+                        : $"{indent}  {tailwindProp}: '{tailwindValue}',");
+                }
+                sb.AppendLine($"{indent}}},");
+            }
+
+            // Write states
+            foreach (var (state, styles) in component.States)
+            {
+                sb.AppendLine($"{indent}['&:{state}']: {{");
+                foreach (var (prop, value) in styles)
+                {
+                    var tailwindProp = ConvertToTailwindProperty(prop);
+                    var tailwindValue = ConvertToTailwindValue(value);
+                    sb.AppendLine(context.Minify
+                        ? $"{indent}  {tailwindProp}:'{tailwindValue}',"
+                        : $"{indent}  {tailwindProp}: '{tailwindValue}',");
+                }
+                sb.AppendLine($"{indent}}},");
+            }
         }
 
         private void WriteComponentStyle(
@@ -244,15 +296,43 @@ namespace YCSS.Core.Compilation.Formatters
             ComponentDefinition component,
             FormatterContext context)
         {
-            var className = component.Class ?? name;
+            var className = component.Base?.Class ?? name;
             sb.AppendLine($"        '.{className}': {{");
-            
+
             if (component.Base != null)
             {
-                WriteComponentBase(sb, component.Base, "          ");
+                WriteComponentBase(sb, component.Base, "          ", context);
             }
 
             sb.AppendLine("        },");
+        }
+
+        private void WriteStyles(
+    StringBuilder sb,
+    List<StylePropertyDefinition> styles,
+    string indent,
+    FormatterContext context)  // Added context parameter
+        {
+            foreach (var style in styles)
+            {
+                var tailwindProp = ConvertToTailwindProperty(style.Property);
+                var tailwindValue = ConvertToTailwindValue(style.Value);
+                var important = style.Important ? " !important" : "";
+
+                if (!string.IsNullOrEmpty(style.Comment) && context.IncludeComments)
+                {
+                    sb.AppendLine($"{indent}/* {style.Comment} */");
+                }
+
+                if (context.Minify)
+                {
+                    sb.AppendLine($"{indent}{tailwindProp}:'{tailwindValue}{important}';");
+                }
+                else
+                {
+                    sb.AppendLine($"{indent}{tailwindProp}: '{tailwindValue}{important}';");
+                }
+            }
         }
 
         private void WriteComponentBase(

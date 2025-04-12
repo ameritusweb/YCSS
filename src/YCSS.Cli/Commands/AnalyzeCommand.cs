@@ -7,6 +7,7 @@ using System.Text;
 using System.Threading.Tasks;
 using YCSS.Cli.Common;
 using YCSS.Cli.Utils;
+using YCSS.Core.Pipeline;
 
 namespace YCSS.Cli.Commands
 {

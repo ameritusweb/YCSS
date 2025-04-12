@@ -9,6 +9,8 @@ using System.Text;
 using System.Threading.Tasks;
 using YCSS.Cli.Common;
 using YCSS.Cli.Utils;
+using YCSS.Core.Exceptions;
+using YCSS.Core.Validation;
 
 namespace YCSS.Cli.Commands
 {

@@ -15,7 +15,7 @@ namespace YCSS.Core.Models
     public class ComponentBaseDefinition
     {
         public string Class { get; set; }
-        public List<StyleDefinition> Styles { get; set; } = new();
+        public List<StylePropertyDefinition> Styles { get; set; } = new();
         public Dictionary<string, Dictionary<string, string>> MediaQueries { get; set; } = new();
         public Dictionary<string, Dictionary<string, string>> States { get; set; } = new();
     }

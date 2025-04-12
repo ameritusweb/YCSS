@@ -5,6 +5,7 @@ using System.CommandLine;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using YamlDotNet.Serialization;
 using YCSS.Cli.Common;
 using YCSS.Cli.Utils;
 

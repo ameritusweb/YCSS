@@ -150,7 +150,7 @@ namespace YCSS.Core.Compilation
 
         private void WriteStyles(
             TextWriter writer,
-            List<StyleDefinition> styles,
+            List<StylePropertyDefinition> styles,
             CompilerOptions options)
         {
             foreach (var style in styles)
