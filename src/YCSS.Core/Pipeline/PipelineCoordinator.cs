@@ -21,10 +21,16 @@ namespace YCSS.Core.Pipeline
             services.AddSingleton<IStylePipeline, StylePipeline>();
             services.AddSingleton<IStyleCompiler, StyleCompiler>();
             services.AddSingleton<IStyleValidator, StyleValidator>();
-            services.AddSingleton<IPatternDetector, PatternDetector>();
             services.AddSingleton<IAnalysisCache, MemoryAnalysisCache>();
+
+            // Analysis services
+            services.AddSingleton<GeneralPatternDetector>();
+            services.AddSingleton<HierarchicalPatternDetector>();
+            services.AddSingleton<BEMAnalyzer>();
+            services.AddSingleton<IClusterAnalyzer, ClusterAnalyzer>();
+            services.AddSingleton<StyleMetrics>();
+            services.AddSingleton<PerformanceAnalyzer>();
             services.AddSingleton<StyleAnalyzer>();
-            services.AddSingleton<ClusterAnalyzer>();
 
             return services;
         }
