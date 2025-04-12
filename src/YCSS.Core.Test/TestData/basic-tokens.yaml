@@ -1,0 +1,11 @@
+﻿tokens:
+  color-primary: "#1f2937"
+  color-secondary: "#4b5563"
+  color-accent: "#3b82f6"
+  
+  spacing-sm: "0.5rem"
+  spacing-md: "1rem"
+  spacing-lg: "1.5rem"
+  
+  radius-sm: "0.25rem"
+  radius-md: "0.5rem"

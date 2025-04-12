@@ -38,7 +38,7 @@ namespace YCSS.Cli.Commands
             return command;
         }
 
-        private async Task HandleBuild(
+        internal async Task HandleBuild(
             FileInfo input,
             FileInfo? output,
             string format,

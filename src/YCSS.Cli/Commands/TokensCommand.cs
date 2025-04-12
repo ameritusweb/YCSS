@@ -1,4 +1,5 @@
 ﻿using Microsoft.Extensions.DependencyInjection;
+using Spectre.Console;
 using System;
 using System.Collections.Generic;
 using System.CommandLine;
@@ -8,6 +9,7 @@ using System.Threading.Tasks;
 using YamlDotNet.Serialization;
 using YCSS.Cli.Common;
 using YCSS.Cli.Utils;
+using YCSS.Core.Interfaces;
 
 namespace YCSS.Cli.Commands
 {
@@ -42,7 +44,7 @@ namespace YCSS.Cli.Commands
             return command;
         }
 
-        private async Task HandleTokens(
+        internal async Task HandleTokens(
             FileInfo[] files,
         string format,
         FileInfo? output,

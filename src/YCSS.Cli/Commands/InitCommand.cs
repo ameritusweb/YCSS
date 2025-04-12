@@ -42,7 +42,7 @@ namespace YCSS.Cli.Commands
             return command;
         }
 
-        private async Task HandleInit(DirectoryInfo dir, string template, bool force)
+        internal async Task HandleInit(DirectoryInfo dir, string template, bool force)
         {
             var console = _services.GetRequiredService<IConsoleWriter>();
             var progress = _services.GetRequiredService<IProgressRenderer>();

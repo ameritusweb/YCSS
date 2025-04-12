@@ -24,14 +24,14 @@ namespace YCSS.Core.Analysis
     {
         private readonly ILogger<StyleAnalyzer> _logger;
         private readonly IPatternDetector _patternDetector;
-        private readonly ClusterAnalyzer _clusterAnalyzer;
+        private readonly IClusterAnalyzer _clusterAnalyzer;
         private readonly StyleMetrics _metrics;
         private readonly PerformanceAnalyzer _performance;
 
         public StyleAnalyzer(
             ILogger<StyleAnalyzer> logger,
             IPatternDetector patternDetector,
-            ClusterAnalyzer clusterAnalyzer,
+            IClusterAnalyzer clusterAnalyzer,
             StyleMetrics metrics,
             PerformanceAnalyzer performance)
         {

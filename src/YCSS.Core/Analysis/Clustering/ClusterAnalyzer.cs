@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 namespace YCSS.Core.Analysis.Clustering
 {
-    public class ClusterAnalyzer
+    public class ClusterAnalyzer : IClusterAnalyzer
     {
         public void AnalyzeClusters(List<StyleCluster> clusters, int indent = 0)
         {

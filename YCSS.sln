@@ -9,6 +9,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "YCSS.Core", "src\YCSS.Core\
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "YCSS.Server", "src\YCSS.Server\YCSS.Server.csproj", "{0FFF5026-BBFC-706B-06EB-3A7A074A7223}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "YCSS.Core.Test", "src\YCSS.Core.Test\YCSS.Core.Test.csproj", "{570C7A91-D5AE-7106-6BEC-F9E529993C65}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -27,6 +29,10 @@ Global
 		{0FFF5026-BBFC-706B-06EB-3A7A074A7223}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{0FFF5026-BBFC-706B-06EB-3A7A074A7223}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{0FFF5026-BBFC-706B-06EB-3A7A074A7223}.Release|Any CPU.Build.0 = Release|Any CPU
+		{570C7A91-D5AE-7106-6BEC-F9E529993C65}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{570C7A91-D5AE-7106-6BEC-F9E529993C65}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{570C7A91-D5AE-7106-6BEC-F9E529993C65}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{570C7A91-D5AE-7106-6BEC-F9E529993C65}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

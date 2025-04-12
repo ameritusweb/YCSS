@@ -1,0 +1,19 @@
+﻿button:
+  base:
+    class: button
+    styles:
+      - background-color: var(--color-primary)
+      - color: white
+      - padding: var(--spacing-md)
+      - border-radius: var(--radius-md)
+  
+  variants:
+    primary:
+      class: button--primary
+      styles:
+        - background-color: var(--color-primary)
+    
+    secondary:
+      class: button--secondary
+      styles:
+        - background-color: var(--color-secondary)

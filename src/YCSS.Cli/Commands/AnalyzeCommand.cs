@@ -39,7 +39,7 @@ namespace YCSS.Cli.Commands
             return command;
         }
 
-        private async Task HandleAnalyze(
+        internal async Task HandleAnalyze(
             FileInfo input,
             FileInfo? output,
             string format,

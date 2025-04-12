@@ -4,9 +4,10 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace YCSS.Cli.Utils
+namespace YCSS.Core.Interfaces
 {
-    class ProgressRenderer
+    public interface IProgressContext
     {
+        void AddTask(string description);
     }
 }

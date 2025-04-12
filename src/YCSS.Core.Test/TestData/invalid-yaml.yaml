@@ -1,0 +1,11 @@
+﻿tokens:
+  color-primary: "#1f2937
+  This is intentionally invalid YAML
+
+components:
+  button:
+    base
+      class: button
+      styles:
+        - background-color: var(--color-primary)
+        - color: white

@@ -1,0 +1,191 @@
+﻿tokens:
+  # Colors
+  color-primary: "#1f2937"
+  color-secondary: "#4b5563"
+  color-accent: "#3b82f6"
+  color-success: "#10b981"
+  color-warning: "#f59e0b"
+  color-danger: "#ef4444"
+  color-info: "#3b82f6"
+  
+  # Typography
+  font-family-base: "system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif"
+  font-family-heading: "system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif"
+  font-size-xs: "0.75rem"
+  font-size-sm: "0.875rem"
+  font-size-md: "1rem"
+  font-size-lg: "1.125rem"
+  font-size-xl: "1.25rem"
+  font-size-2xl: "1.5rem"
+  font-size-3xl: "1.875rem"
+  font-size-4xl: "2.25rem"
+  
+  # Spacing
+  spacing-xs: "0.25rem"
+  spacing-sm: "0.5rem"
+  spacing-md: "1rem"
+  spacing-lg: "1.5rem"
+  spacing-xl: "2rem"
+  spacing-2xl: "3rem"
+  spacing-3xl: "4rem"
+  
+  # Borders
+  border-radius-sm: "0.25rem"
+  border-radius-md: "0.5rem"
+  border-radius-lg: "0.75rem"
+  border-radius-full: "9999px"
+  border-width-thin: "1px"
+  border-width-medium: "2px"
+  border-width-thick: "4px"
+
+components:
+  button:
+    base:
+      class: button
+      styles:
+        - background-color: var(--color-primary)
+        - color: white
+        - padding: var(--spacing-sm) var(--spacing-md)
+        - border-radius: var(--border-radius-md)
+        - font-family: var(--font-family-base)
+        - font-size: var(--font-size-md)
+        - font-weight: 500
+        - cursor: pointer
+        - transition: background-color 0.2s
+      
+      states:
+        hover:
+          background-color: "#111827"
+          transform: "translateY(-1px)"
+        
+        focus:
+          outline: "2px solid var(--color-accent)"
+          outline-offset: "2px"
+        
+        disabled:
+          opacity: "0.5"
+          cursor: "not-allowed"
+    
+    variants:
+      primary:
+        class: button--primary
+        styles:
+          - background-color: var(--color-primary)
+      
+      secondary:
+        class: button--secondary
+        styles:
+          - background-color: var(--color-secondary)
+      
+      accent:
+        class: button--accent
+        styles:
+          - background-color: var(--color-accent)
+      
+      success:
+        class: button--success
+        styles:
+          - background-color: var(--color-success)
+      
+      danger:
+        class: button--danger
+        styles:
+          - background-color: var(--color-danger)
+      
+      outline:
+        class: button--outline
+        styles:
+          - background-color: transparent
+          - color: var(--color-primary)
+          - border: var(--border-width-thin) solid var(--color-primary)
+      
+      small:
+        class: button--sm
+        styles:
+          - padding: var(--spacing-xs) var(--spacing-sm)
+          - font-size: var(--font-size-sm)
+      
+      large:
+        class: button--lg
+        styles:
+          - padding: var(--spacing-md) var(--spacing-lg)
+          - font-size: var(--font-size-lg)
+
+  card:
+    base:
+      class: card
+      styles:
+        - background-color: white
+        - border-radius: var(--border-radius-md)
+        - box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1)
+        - overflow: hidden
+    
+    parts:
+      header:
+        class: card__header
+        styles:
+          - padding: var(--spacing-md)
+          - font-weight: bold
+          - border-bottom: var(--border-width-thin) solid #eee
+      
+      body:
+        class: card__body
+        styles:
+          - padding: var(--spacing-md)
+      
+      footer:
+        class: card__footer
+        styles:
+          - padding: var(--spacing-md)
+          - border-top: var(--border-width-thin) solid #eee
+    
+    variants:
+      bordered:
+        class: card--bordered
+        styles:
+          - border: var(--border-width-thin) solid #eee
+          - box-shadow: none
+      
+      compact:
+        class: card--compact
+        styles:
+          - padding: var(--spacing-sm)
+
+  alert:
+    base:
+      class: alert
+      styles:
+        - padding: var(--spacing-md)
+        - border-radius: var(--border-radius-md)
+        - display: flex
+        - align-items: center
+        - justify-content: space-between
+    
+    variants:
+      info:
+        class: alert--info
+        styles:
+          - background-color: "#e0f2fe"
+          - color: "#0369a1"
+          - border-left: var(--border-width-thick) solid var(--color-info)
+      
+      success:
+        class: alert--success
+        styles:
+          - background-color: "#dcfce7"
+          - color: "#166534"
+          - border-left: var(--border-width-thick) solid var(--color-success)
+      
+      warning:
+        class: alert--warning
+        styles:
+          - background-color: "#fef9c3"
+          - color: "#854d0e"
+          - border-left: var(--border-width-thick) solid var(--color-warning)
+      
+      danger:
+        class: alert--danger
+        styles:
+          - background-color: "#fee2e2"
+          - color: "#b91c1c"
+          - border-left: var(--border-width-thick) solid var(--color-danger)

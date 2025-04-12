@@ -8,6 +8,9 @@ using System.CommandLine.Parsing;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Spectre.Console;
+using YCSS.Core.Pipeline;
+using YCSS.Core.Interfaces;
+using YCSS.Core.Validation;
 
 namespace YCSS.CLI
 {
@@ -65,6 +68,9 @@ namespace YCSS.CLI
             services.AddSingleton<IConsoleWriter, SpectreConsoleWriter>();
             services.AddSingleton<IProgressRenderer, SpectreProgressRenderer>();
             services.AddSingleton<FileWatcher>();
+            services.AddSingleton<IYamlValidator, StructureValidator>();
+            services.AddSingleton<IYamlValidator, TokenValidator>();
+            services.AddSingleton<IYamlValidator, ComponentValidator>();
         }
 
         private static RootCommand BuildRootCommand(IServiceProvider services)

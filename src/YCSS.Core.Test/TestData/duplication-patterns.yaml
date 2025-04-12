@@ -1,0 +1,48 @@
+﻿box-style-1:
+  styles:
+    - padding: 1rem
+    - margin: 1rem
+    - border-radius: 0.5rem
+    - background-color: "#f9fafb"
+
+box-style-2:
+  styles:
+    - padding: 1rem
+    - margin: 1rem
+    - border-radius: 0.5rem
+    - background-color: "#f3f4f6"
+
+box-style-3:
+  styles:
+    - padding: 1rem
+    - margin: 1rem
+    - border-radius: 0.5rem
+    - background-color: "#e5e7eb"
+
+card-style-1:
+  styles:
+    - display: flex
+    - flex-direction: column
+    - gap: 0.5rem
+    - padding: 1rem
+    - border: 1px solid #e5e7eb
+
+card-style-2:
+  styles:
+    - display: flex
+    - flex-direction: column
+    - gap: 0.5rem
+    - padding: 1.5rem
+    - border: 1px solid #d1d5db
+
+text-style-1:
+  styles:
+    - font-size: 1rem
+    - line-height: 1.5
+    - color: "#1f2937"
+
+text-style-2:
+  styles:
+    - font-size: 1rem
+    - line-height: 1.5
+    - color: "#111827"
