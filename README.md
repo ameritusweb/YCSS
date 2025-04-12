@@ -49,12 +49,12 @@ YCSS is designed for scale, clarity, and optimization — for teams and systems 
 ## Getting Started
 
 ### Installation
-bash
+```bash
 dotnet tool install --global ycss
-
+```
 
 ### Example YAML
-yaml
+```yaml
 tokens:
   color-primary: "#1f2937"
   radius-md: "0.5rem"
@@ -79,7 +79,7 @@ components:
         class: card--compact
         styles:
           - padding: 1rem
-
+```
 
 ---
 
