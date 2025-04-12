@@ -1,61 +1,56 @@
-🏛️ DOSE: Department of Style Efficiency
-“A dose of cure for all your CSS symptoms.”
+## 🏛️ DOSE: Department of Style Efficiency
+_A dose of cure for all your CSS symptoms._
 
-📊 Organizational Chart
-                                      ┌────────────────────────────┐
-                                      │     DOSE Director (You)     │
-                                      │     Chief of Style Ops      │
-                                      └────────────┬───────────────┘
-                                                   │
-       ┌──────────────────────────────┬────────────┼───────────────┬───────────────────────────────┐
-       ▼                              ▼                            ▼                               ▼
+### 📊 Organizational Chart
+```
+                         +---------------------------+
+                         |     DOSE Director (You)   |
+                         |   Chief of Style Ops      |
+                         +------------+--------------+
+                                      |
+    +------------------+-------------+--------------+--------------------+
+    |                  |                            |                    |
+    v                  v                            v                    v
 
-┌──────────────────┐       ┌──────────────────────┐       ┌────────────────────┐       ┌─────────────────────────┐
-│ Bureau of        │       │ Bureau of Naming     │       │ Audit & Compliance │       │ Office of Refactoring  │
-│ Duplication       │       │ Standards            │       │ Division (DOSE-ACT)│       │ Initiatives (DOSE-Rx)   │
-└──────────────────┘       └──────────────────────┘       └────────────────────┘       └─────────────────────────┘
-        │                          │                            │                              │
-        ▼                          ▼                            ▼                              ▼
++------------------+   +------------------------+   +----------------+   +-------------------------+
+| Bureau of        |   | Bureau of Naming       |   | Audit &        |   | Office of Refactoring  |
+| Duplication      |   | Standards              |   | Compliance     |   | Initiatives (DOSE-Rx)  |
++------------------+   +------------------------+   | Division (ACT) |   +-------------------------+
+      |                        |                    +----------------+           |
+      v                        v                          |                     v
 
-• Style clustering        • BEM compliance checks      • Justification scores         • Auto-refactor engine  
-• Similarity scoring      • Naming heuristic engine     • Dead code detection          • Code mod generation  
-• Merging recommendations • Suggest class renames       • Risk analysis reports        • One-click YAML + code updates
-
-
-       ┌──────────────────────────────┐
-       ▼
-┌───────────────────────────────┐
-│ Office of Semantic Mapping    │
-│ & Usage Intelligence (OSMUI)  │
-└───────────────────────────────┘
-        │
-        ▼
-• Tracks where styles are used in HTML, Blazor, JSX, etc.  
-• Maps style to component hierarchy  
-• Detects unintentional duplication across components  
-• Provides refactor confidence scoring
+- Style clustering       - BEM compliance          - Justification scores   - Auto-refactor engine  
+- Similarity scoring     - Naming suggestions      - Dead code detection    - Code mod generation  
+- Merge recommendations  - Semantic refactors      - Risk analysis          - YAML + Razor refactors
 
 
-🛠️ Core DOSE Tools (per division)
-DOSE-Lint – Lightweight real-time audit + naming guide (Bureau of Naming Standards)
+                           +-------------------------------+
+                           | Office of Semantic Mapping    |
+                           | & Usage Intelligence (OSMUI)  |
+                           +-------------------------------+
+                                        |
+                                        v
 
-DOSE-Sim – Style similarity & duplication detector (Bureau of Duplication)
+- Tracks class usage across code (Razor, HTML, JSX)  
+- Maps styles to component hierarchy  
+- Detects style overlap or semantic drift  
+- Scores refactor confidence
+```
 
-DOSE-Rx – Refactor engine with one-click code mods (Office of Refactoring)
+### 🛠️ Core DOSE Tools
 
-DOSE-Viz – Dashboard showing usage heatmaps & style structure (Audit & Usage)
+- **DOSE-Lint** – Real-time audit + naming guide  
+- **DOSE-Sim** – Similarity & duplication detector  
+- **DOSE-Rx** – Refactor engine w/ code mods  
+- **DOSE-Viz** – Style heatmaps & structural dashboards  
+- **DOSE-Agent** – LSP plugin for VS Code
 
-DOSE-Agent – Language Server Protocol (LSP) plugin for VS Code
 
-📦 Integration Targets
-YAML-based styling (YCSS)
+### 📦 Integration Targets
 
-SCSS/CSS and tokens
-
-Razor/Blazor C#
-
-React/Vue templates
-
-Design system JSONs
-
-Figma → Style sync tooling
+- YAML-based styling (YCSS)  
+- SCSS/CSS + design tokens  
+- Razor/Blazor C#  
+- React/Vue templates  
+- Design system JSONs  
+- Figma → Style sync tooling
