@@ -4,9 +4,9 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace YCSS.Core.Analysis.Clustering
+namespace YCSS.Cli.Common
 {
-    class StyleCluster
+    class Constants
     {
     }
 }
