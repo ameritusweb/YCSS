@@ -7,6 +7,7 @@ using System.Text;
 using System.Threading.Tasks;
 using YCSS.Cli.Commands;
 using YCSS.Cli.Utils;
+using YCSS.Core.Interfaces;
 using YCSS.Core.Pipeline;
 using YCSS.Core.Test.Renderers;
 using YCSS.Core.Test.Writers;
