@@ -7,7 +7,7 @@ using System.Threading.Tasks;
 
 namespace YCSS.Core.Compilation.Formatters
 {
-    public class CssFormatter : IStyleFormatter
+    public class CssFormatter : IOutputFormatter
     {
         private readonly ILogger<CssFormatter> _logger;
 
@@ -20,27 +20,41 @@ namespace YCSS.Core.Compilation.Formatters
         {
             var sb = new StringBuilder();
             var context = new FormatterContext(
-                Variables: definition.Tokens,
                 Minify: options.Optimize,
                 Theme: options.Theme,
-                IncludeSourceMap: options.GenerateSourceMap
+                IncludeSourceMap: false,
+                IncludeComments: !options.Optimize
             );
 
             try
             {
-                // Write CSS variables
-                WriteVariables(sb, definition.Tokens, context);
-
-                // Write component styles
-                foreach (var (name, component) in definition.Components)
+                if (!options.TokensOnly)
                 {
-                    WriteComponent(sb, name, component, context);
+                    // Write CSS variables
+                    WriteVariables(sb, definition.Tokens, context);
+
+                    // Write component styles
+                    foreach (var (name, component) in definition.Components)
+                    {
+                        WriteComponent(sb, name, component, context);
+                    }
+
+                    // Write street styles
+                    foreach (var (name, style) in definition.StreetStyles)
+                    {
+                        WriteStreetStyle(sb, name, style, context);
+                    }
+
+                    // Write utilities if requested
+                    if (options.UseUtilities)
+                    {
+                        WriteUtilities(sb, definition, context);
+                    }
                 }
-
-                // Write utilities if requested
-                if (options.UseUtilities)
+                else
                 {
-                    WriteUtilities(sb, definition, context);
+                    // Tokens only
+                    sb.Append(FormatTokens(definition, options));
                 }
 
                 var css = sb.ToString();
@@ -60,19 +74,55 @@ namespace YCSS.Core.Compilation.Formatters
             }
         }
 
+        public string FormatTokens(StyleDefinition definition, CompilerOptions options)
+        {
+            var sb = new StringBuilder();
+            var context = new FormatterContext(
+                Minify: options.Optimize,
+                Theme: options.Theme,
+                IncludeSourceMap: false,
+                IncludeComments: !options.Optimize
+            );
+
+            WriteVariables(sb, definition.Tokens, context);
+            return sb.ToString();
+        }
+
         private void WriteVariables(
             StringBuilder sb,
-            Dictionary<string, string> tokens,
+            Dictionary<string, TokenDefinition> tokens,
             FormatterContext context)
         {
             if (!tokens.Any()) return;
 
-            sb.AppendLine(":root {");
-            foreach (var (name, value) in tokens)
+            if (context.IncludeComments)
             {
+                sb.AppendLine("/* Design Tokens */");
+            }
+
+            sb.AppendLine(":root {");
+            foreach (var token in tokens.Values)
+            {
+                // Write token description if available
+                if (context.IncludeComments && !string.IsNullOrEmpty(token.Description))
+                {
+                    sb.AppendLine($"  /* {token.Description} */");
+                }
+
                 sb.AppendLine(context.Minify
-                    ? $"--{name}:{value};"
-                    : $"  --{name}: {value};");
+                    ? $"--{token.Name}:{token.Value};"
+                    : $"  --{token.Name}: {token.Value};");
+
+                // Write theme overrides if available
+                if (token.ThemeOverrides.Any())
+                {
+                    foreach (var (theme, value) in token.ThemeOverrides)
+                    {
+                        sb.AppendLine(context.Minify
+                            ? $"--{theme}-{token.Name}:{value};"
+                            : $"  --{theme}-{token.Name}: {value};");
+                    }
+                }
             }
             sb.AppendLine("}");
             sb.AppendLine();
@@ -84,31 +134,28 @@ namespace YCSS.Core.Compilation.Formatters
             ComponentDefinition component,
             FormatterContext context)
         {
-            var className = component.Class ?? name;
-
-            // Base styles
-            if (component.Styles.Any())
+            // Write component description if available
+            if (context.IncludeComments && !string.IsNullOrEmpty(component.Description))
             {
-                WriteRuleSet(sb, $".{className}", component.Styles, context);
+                sb.AppendLine($"/* {component.Description} */");
             }
 
-            // Child components
-            foreach (var (childName, child) in component.Children)
+            // Write base styles
+            if (component.Base != null)
             {
-                if (child.Styles.Any())
-                {
-                    var childClass = child.Class ?? $"{className}__{childName}";
-                    WriteRuleSet(sb, $".{childClass}", child.Styles, context);
-                }
+                WriteComponentBase(sb, component.Base, context);
             }
 
-            // Variants
-            foreach (var (variantName, styles) in component.Variants)
+            // Write parts
+            foreach (var (partName, part) in component.Parts)
             {
-                if (styles.Any())
-                {
-                    WriteRuleSet(sb, $".{className}--{variantName}", styles, context);
-                }
+                WriteComponentBase(sb, part, context);
+            }
+
+            // Write variants
+            foreach (var (variantName, variant) in component.Variants)
+            {
+                WriteComponentBase(sb, variant, context);
             }
 
             if (!context.Minify)
@@ -117,18 +164,86 @@ namespace YCSS.Core.Compilation.Formatters
             }
         }
 
+        private void WriteComponentBase(
+            StringBuilder sb,
+            ComponentBaseDefinition component,
+            FormatterContext context)
+        {
+            var selector = $".{component.Class}";
+            WriteStyles(sb, selector, component, context);
+
+            // Write media queries
+            foreach (var (query, styles) in component.MediaQueries)
+            {
+                sb.AppendLine($"@media {query} {{");
+                foreach (var (prop, value) in styles)
+                {
+                    sb.AppendLine(context.Minify
+                        ? $"{selector}{{${prop}:{value};}}"
+                        : $"  {selector} {{\n    {prop}: {value};\n  }}");
+                }
+                sb.AppendLine("}");
+            }
+
+            // Write states
+            foreach (var (state, styles) in component.States)
+            {
+                WriteRuleSet(sb, $"{selector}:{state}", styles, context);
+            }
+        }
+
+        private void WriteStreetStyle(
+            StringBuilder sb,
+            string name,
+            ComponentBaseDefinition style,
+            FormatterContext context)
+        {
+            WriteComponentBase(sb, style, context);
+        }
+
+        private void WriteStyles(
+            StringBuilder sb,
+            string selector,
+            ComponentBaseDefinition component,
+            FormatterContext context)
+        {
+            if (!component.Styles.Any()) return;
+
+            sb.Append(selector);
+            sb.AppendLine(context.Minify ? "{" : " {");
+
+            foreach (var style in component.Styles)
+            {
+                var formattedValue = FormatValue(style.Value, context);
+                var important = style.Important ? " !important" : "";
+                
+                if (context.IncludeComments && !string.IsNullOrEmpty(style.Comment))
+                {
+                    sb.AppendLine($"  /* {style.Comment} */");
+                }
+
+                sb.AppendLine(context.Minify
+                    ? $"{style.Property}:{formattedValue}{important};"
+                    : $"  {style.Property}: {formattedValue}{important};");
+            }
+
+            sb.AppendLine("}");
+        }
+
         private void WriteRuleSet(
             StringBuilder sb,
             string selector,
-            Dictionary<string, object> styles,
+            Dictionary<string, string> styles,
             FormatterContext context)
         {
+            if (!styles.Any()) return;
+
             sb.Append(selector);
             sb.AppendLine(context.Minify ? "{" : " {");
 
             foreach (var (prop, value) in styles)
             {
-                var formattedValue = FormatValue(value?.ToString() ?? "", context);
+                var formattedValue = FormatValue(value, context);
                 sb.AppendLine(context.Minify
                     ? $"{prop}:{formattedValue};"
                     : $"  {prop}: {formattedValue};");
@@ -142,30 +257,35 @@ namespace YCSS.Core.Compilation.Formatters
             StyleDefinition definition,
             FormatterContext context)
         {
-            foreach (var (name, value) in definition.Tokens)
+            if (context.IncludeComments)
             {
-                if (name.StartsWith("color"))
+                sb.AppendLine("/* Utility Classes */");
+            }
+
+            foreach (var token in definition.Tokens.Values)
+            {
+                if (token.Name.StartsWith("color"))
                 {
-                    WriteRuleSet(sb, $".text-{name}", new Dictionary<string, object>
+                    WriteRuleSet(sb, $".text-{token.Name}", new Dictionary<string, string>
                     {
-                        ["color"] = $"var(--{name})"
+                        ["color"] = $"var(--{token.Name})"
                     }, context);
 
-                    WriteRuleSet(sb, $".bg-{name}", new Dictionary<string, object>
+                    WriteRuleSet(sb, $".bg-{token.Name}", new Dictionary<string, string>
                     {
-                        ["background-color"] = $"var(--{name})"
+                        ["background-color"] = $"var(--{token.Name})"
                     }, context);
                 }
-                else if (name.StartsWith("spacing"))
+                else if (token.Name.StartsWith("spacing"))
                 {
-                    WriteRuleSet(sb, $".p-{name}", new Dictionary<string, object>
+                    WriteRuleSet(sb, $".p-{token.Name}", new Dictionary<string, string>
                     {
-                        ["padding"] = $"var(--{name})"
+                        ["padding"] = $"var(--{token.Name})"
                     }, context);
 
-                    WriteRuleSet(sb, $".m-{name}", new Dictionary<string, object>
+                    WriteRuleSet(sb, $".m-{token.Name}", new Dictionary<string, string>
                     {
-                        ["margin"] = $"var(--{name})"
+                        ["margin"] = $"var(--{token.Name})"
                     }, context);
                 }
             }

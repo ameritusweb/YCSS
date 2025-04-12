@@ -1,6 +1,9 @@
 ﻿using Microsoft.Extensions.Logging;
+using YamlDotNet.RepresentationModel;
 using YCSS.Core.Exceptions;
 using YCSS.Core.Models;
+using YCSS.Core.Pipeline;
+using YCSS.Core.Utils;
 
 namespace YCSS.Core.Validation
 {
@@ -19,13 +22,16 @@ namespace YCSS.Core.Validation
     public class StyleValidator : IStyleValidator
     {
         private readonly ILogger<StyleValidator> _logger;
+        private readonly YamlParser _yamlParser;
         private readonly IEnumerable<IYamlValidator> _validators;
 
         public StyleValidator(
             ILogger<StyleValidator> logger,
+            YamlParser yamlParser,
             IEnumerable<IYamlValidator> validators)
         {
             _logger = logger;
+            _yamlParser = yamlParser;
             _validators = validators;
         }
 
@@ -57,14 +63,21 @@ namespace YCSS.Core.Validation
                     return new ValidationResult(false, errors);
                 }
 
-                // Parse into StyleDefinition if valid
-                var deserializer = new YamlDotNet.Serialization.DeserializerBuilder()
-                    .IgnoreUnmatchedProperties()
-                    .Build();
+                // Parse YAML using our parser
+                var (tokens, components, styles) = _yamlParser.Parse(yamlContent);
 
-                var definition = deserializer.Deserialize<StyleDefinition>(yamlContent);
+                // Create build context with parsed data
+                var definition = new StyleDefinition
+                {
+                    Tokens = tokens,
+                    Components = components,
+                    StreetStyles = styles
+                };
 
                 _logger.LogInformation("YAML validation completed successfully");
+                _logger.LogDebug("Parsed {TokenCount} tokens, {ComponentCount} components, {StyleCount} street styles",
+                    tokens.Count, components.Count, styles.Count);
+
                 return new ValidationResult(true, errors, definition);
             }
             catch (Exception ex)
@@ -72,8 +85,8 @@ namespace YCSS.Core.Validation
                 _logger.LogError(ex, "YAML validation failed with exception");
                 throw new YCSSValidationException(new[]
                 {
-                new ValidationError("", ex.Message)
-            });
+                    new ValidationError("", ex.Message)
+                });
             }
         }
 
@@ -84,42 +97,70 @@ namespace YCSS.Core.Validation
             var errors = new List<ValidationError>();
 
             // Validate tokens
-            foreach (var (key, value) in definition.Tokens)
+            foreach (var token in definition.Tokens.Values)
             {
-                if (string.IsNullOrWhiteSpace(key))
+                if (string.IsNullOrWhiteSpace(token.Name))
                 {
-                    errors.Add(new ValidationError("tokens", "Token key cannot be empty"));
+                    errors.Add(new ValidationError("tokens", "Token name cannot be empty"));
                     continue;
                 }
 
-                if (value == null)
+                if (string.IsNullOrWhiteSpace(token.Value))
                 {
-                    errors.Add(new ValidationError($"tokens.{key}", "Token value cannot be null"));
+                    errors.Add(new ValidationError($"tokens.{token.Name}", "Token value cannot be empty"));
                 }
             }
 
             // Validate components
-            foreach (var (name, component) in definition.Components)
+            foreach (var component in definition.Components.Values)
             {
-                if (string.IsNullOrWhiteSpace(name))
+                if (string.IsNullOrWhiteSpace(component.Name))
                 {
                     errors.Add(new ValidationError("components", "Component name cannot be empty"));
                     continue;
                 }
 
-                ValidateComponent(component, $"components.{name}", errors);
+                ValidateComponentBase(component.Base, $"components.{component.Name}.base", errors);
+                
+                foreach (var (partName, part) in component.Parts)
+                {
+                    ValidateComponentBase(part, $"components.{component.Name}.parts.{partName}", errors);
+                }
+
+                foreach (var (variantName, variant) in component.Variants)
+                {
+                    ValidateComponentBase(variant, $"components.{component.Name}.variants.{variantName}", errors);
+                }
+            }
+
+            // Validate street styles
+            foreach (var (name, style) in definition.StreetStyles)
+            {
+                if (string.IsNullOrWhiteSpace(name))
+                {
+                    errors.Add(new ValidationError("styles", "Style name cannot be empty"));
+                    continue;
+                }
+
+                ValidateComponentBase(style, name, errors);
             }
 
             return new ValidationResult(!errors.Any(e => e.Severity == ValidationSeverity.Error), errors, definition);
         }
 
-        private void ValidateComponent(
-            ComponentDefinition component,
+        private void ValidateComponentBase(
+            ComponentBaseDefinition component,
             string path,
             List<ValidationError> errors)
         {
+            if (component == null)
+            {
+                errors.Add(new ValidationError(path, "Component definition cannot be null"));
+                return;
+            }
+
             // Validate class name if specified
-            if (component.Class != null && !IsValidClassName(component.Class))
+            if (!string.IsNullOrEmpty(component.Class) && !IsValidClassName(component.Class))
             {
                 errors.Add(new ValidationError(
                     $"{path}.class",
@@ -128,9 +169,9 @@ namespace YCSS.Core.Validation
             }
 
             // Validate styles
-            foreach (var (prop, value) in component.Styles)
+            foreach (var style in component.Styles)
             {
-                if (string.IsNullOrWhiteSpace(prop))
+                if (string.IsNullOrWhiteSpace(style.Property))
                 {
                     errors.Add(new ValidationError(
                         $"{path}.styles",
@@ -139,60 +180,36 @@ namespace YCSS.Core.Validation
                     continue;
                 }
 
-                if (value == null)
+                if (string.IsNullOrWhiteSpace(style.Value))
                 {
                     errors.Add(new ValidationError(
-                        $"{path}.styles.{prop}",
-                        "Style value cannot be null"
+                        $"{path}.styles.{style.Property}",
+                        "Style value cannot be empty"
                     ));
                 }
             }
 
-            // Validate children
-            foreach (var (childName, child) in component.Children)
+            // Validate media queries
+            foreach (var (query, styles) in component.MediaQueries)
             {
-                if (string.IsNullOrWhiteSpace(childName))
+                if (string.IsNullOrWhiteSpace(query))
                 {
                     errors.Add(new ValidationError(
-                        $"{path}.children",
-                        "Child component name cannot be empty"
+                        $"{path}.media",
+                        "Media query cannot be empty"
                     ));
-                    continue;
                 }
-
-                ValidateComponent(child, $"{path}.children.{childName}", errors);
             }
 
-            // Validate variants
-            foreach (var (variantName, styles) in component.Variants)
+            // Validate states
+            foreach (var (state, styles) in component.States)
             {
-                if (string.IsNullOrWhiteSpace(variantName))
+                if (string.IsNullOrWhiteSpace(state))
                 {
                     errors.Add(new ValidationError(
-                        $"{path}.variants",
-                        "Variant name cannot be empty"
+                        $"{path}.states",
+                        "State name cannot be empty"
                     ));
-                    continue;
-                }
-
-                foreach (var (prop, value) in styles)
-                {
-                    if (string.IsNullOrWhiteSpace(prop))
-                    {
-                        errors.Add(new ValidationError(
-                            $"{path}.variants.{variantName}",
-                            "Style property name cannot be empty"
-                        ));
-                        continue;
-                    }
-
-                    if (value == null)
-                    {
-                        errors.Add(new ValidationError(
-                            $"{path}.variants.{variantName}.{prop}",
-                            "Style value cannot be null"
-                        ));
-                    }
                 }
             }
         }

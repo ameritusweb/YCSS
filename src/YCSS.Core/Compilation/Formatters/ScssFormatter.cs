@@ -1,13 +1,10 @@
 ﻿using Microsoft.Extensions.Logging;
-using System;
-using System.Collections.Generic;
-using System.Linq;
 using System.Text;
-using System.Threading.Tasks;
+using YCSS.Core.Models;
 
 namespace YCSS.Core.Compilation.Formatters
 {
-    public class ScssFormatter : IStyleFormatter
+    public class ScssFormatter : IOutputFormatter
     {
         private readonly ILogger<ScssFormatter> _logger;
         private int _indentLevel;
@@ -21,30 +18,44 @@ namespace YCSS.Core.Compilation.Formatters
         {
             var sb = new StringBuilder();
             var context = new FormatterContext(
-                Variables: definition.Tokens,
                 Minify: options.Optimize,
                 Theme: options.Theme,
-                IncludeSourceMap: options.GenerateSourceMap
+                IncludeSourceMap: false,
+                IncludeComments: !options.Optimize
             );
 
             try
             {
-                // Write variables
-                WriteVariables(sb, definition.Tokens, context);
-
-                // Write mixins
-                WriteMixins(sb, definition, context);
-
-                // Write components
-                foreach (var (name, component) in definition.Components)
+                if (!options.TokensOnly)
                 {
-                    WriteComponent(sb, name, component, context);
+                    // Write SCSS variables
+                    WriteVariables(sb, definition.Tokens, context);
+
+                    // Write mixins and functions if needed
+                    WriteMixins(sb, context);
+
+                    // Write component styles
+                    foreach (var (name, component) in definition.Components)
+                    {
+                        WriteComponent(sb, name, component, context);
+                    }
+
+                    // Write street styles
+                    foreach (var (name, style) in definition.StreetStyles)
+                    {
+                        WriteStreetStyle(sb, name, style, context);
+                    }
+
+                    // Write utilities if requested
+                    if (options.UseUtilities)
+                    {
+                        WriteUtilities(sb, definition, context);
+                    }
                 }
-
-                // Write utilities if requested
-                if (options.UseUtilities)
+                else
                 {
-                    WriteUtilities(sb, definition, context);
+                    // Tokens only
+                    sb.Append(FormatTokens(definition, options));
                 }
 
                 return sb.ToString();
@@ -56,46 +67,68 @@ namespace YCSS.Core.Compilation.Formatters
             }
         }
 
+        public string FormatTokens(StyleDefinition definition, CompilerOptions options)
+        {
+            var sb = new StringBuilder();
+            var context = new FormatterContext(
+                Minify: options.Optimize,
+                Theme: options.Theme,
+                IncludeSourceMap: false,
+                IncludeComments: !options.Optimize
+            );
+
+            WriteVariables(sb, definition.Tokens, context);
+            return sb.ToString();
+        }
+
         private void WriteVariables(
             StringBuilder sb,
-            Dictionary<string, string> tokens,
+            Dictionary<string, TokenDefinition> tokens,
             FormatterContext context)
         {
             if (!tokens.Any()) return;
 
-            foreach (var (name, value) in tokens)
+            if (context.IncludeComments)
             {
-                sb.AppendLine($"${name}: {value};");
+                sb.AppendLine("// Design Tokens");
+            }
+
+            foreach (var token in tokens.Values)
+            {
+                // Write token description if available
+                if (context.IncludeComments && !string.IsNullOrEmpty(token.Description))
+                {
+                    sb.AppendLine($"// {token.Description}");
+                }
+
+                sb.AppendLine($"${token.Name}: {token.Value};");
+
+                // Write theme overrides if available
+                if (token.ThemeOverrides.Any())
+                {
+                    foreach (var (theme, value) in token.ThemeOverrides)
+                    {
+                        sb.AppendLine($"${theme}-{token.Name}: {value};");
+                    }
+                }
             }
             sb.AppendLine();
         }
 
-        private void WriteMixins(
-            StringBuilder sb,
-            StyleDefinition definition,
-            FormatterContext context)
+        private void WriteMixins(StringBuilder sb, FormatterContext context)
         {
-            // Create mixins for commonly used property combinations
-            foreach (var (name, component) in definition.Components)
+            if (context.IncludeComments)
             {
-                if (component.Variants.Any())
-                {
-                    sb.AppendLine($"@mixin {name}-variants {{");
-                    _indentLevel++;
-
-                    foreach (var (variantName, styles) in component.Variants)
-                    {
-                        var indent = new string(' ', _indentLevel * 2);
-                        sb.AppendLine($"{indent}&--{variantName} {{");
-                        WriteStyles(sb, styles, context);
-                        sb.AppendLine($"{indent}}}");
-                    }
-
-                    _indentLevel--;
-                    sb.AppendLine("}");
-                    sb.AppendLine();
-                }
+                sb.AppendLine("// Common Mixins");
             }
+
+            // Add common mixins
+            sb.AppendLine(@"@mixin theme($name) {
+  [data-theme=""#{$name}""] & {
+    @content;
+  }
+}");
+            sb.AppendLine();
         }
 
         private void WriteComponent(
@@ -104,48 +137,111 @@ namespace YCSS.Core.Compilation.Formatters
             ComponentDefinition component,
             FormatterContext context)
         {
-            var className = component.Class ?? name;
-            sb.AppendLine($".{className} {{");
-            _indentLevel++;
-
-            // Base styles
-            WriteStyles(sb, component.Styles, context);
-
-            // Child components using nesting
-            foreach (var (childName, child) in component.Children)
+            // Write component description if available
+            if (context.IncludeComments && !string.IsNullOrEmpty(component.Description))
             {
-                var childClass = child.Class ?? childName;
-                var indent = new string(' ', _indentLevel * 2);
-                sb.AppendLine($"{indent}&__{childClass} {{");
-                _indentLevel++;
-                WriteStyles(sb, child.Styles, context);
-                _indentLevel--;
+                sb.AppendLine($"// {component.Description}");
+            }
+
+            // Write base component styles
+            if (component.Base != null)
+            {
+                WriteComponentBase(sb, component.Base, context);
+            }
+
+            // Write parts using nesting
+            foreach (var (partName, part) in component.Parts)
+            {
+                WriteComponentBase(sb, part, context, true);
+            }
+
+            // Write variants using nesting
+            foreach (var (variantName, variant) in component.Variants)
+            {
+                WriteComponentBase(sb, variant, context, true);
+            }
+
+            if (!context.Minify)
+            {
+                sb.AppendLine();
+            }
+        }
+
+        private void WriteComponentBase(
+            StringBuilder sb,
+            ComponentBaseDefinition component,
+            FormatterContext context,
+            bool nested = false)
+        {
+            var selector = $".{component.Class}";
+            WriteStyles(sb, selector, component, context, nested);
+
+            // Write media queries using SCSS nesting
+            foreach (var (query, styles) in component.MediaQueries)
+            {
+                var indent = nested ? "  " : "";
+                sb.AppendLine($"{indent}@media {query} {{");
+                foreach (var (prop, value) in styles)
+                {
+                    sb.AppendLine(context.Minify
+                        ? $"{prop}:{value};"
+                        : $"{indent}  {prop}: {value};");
+                }
                 sb.AppendLine($"{indent}}}");
             }
 
-            // Include variants mixin if it exists
-            if (component.Variants.Any())
+            // Write states using SCSS nesting
+            foreach (var (state, styles) in component.States)
             {
-                var indent = new string(' ', _indentLevel * 2);
-                sb.AppendLine($"{indent}@include {name}-variants;");
+                var indent = nested ? "  " : "";
+                sb.AppendLine($"{indent}&:{state} {{");
+                foreach (var (prop, value) in styles)
+                {
+                    sb.AppendLine(context.Minify
+                        ? $"{prop}:{value};"
+                        : $"{indent}  {prop}: {value};");
+                }
+                sb.AppendLine($"{indent}}}");
             }
+        }
 
-            _indentLevel--;
-            sb.AppendLine("}");
-            sb.AppendLine();
+        private void WriteStreetStyle(
+            StringBuilder sb,
+            string name,
+            ComponentBaseDefinition style,
+            FormatterContext context)
+        {
+            WriteComponentBase(sb, style, context);
         }
 
         private void WriteStyles(
             StringBuilder sb,
-            Dictionary<string, object> styles,
-            FormatterContext context)
+            string selector,
+            ComponentBaseDefinition component,
+            FormatterContext context,
+            bool nested = false)
         {
-            foreach (var (prop, value) in styles)
+            if (!component.Styles.Any()) return;
+
+            var indent = nested ? "  " : "";
+            sb.AppendLine(nested ? $"{indent}&{selector} {{" : $"{selector} {{");
+
+            foreach (var style in component.Styles)
             {
-                var indent = new string(' ', _indentLevel * 2);
-                var formattedValue = FormatValue(value?.ToString() ?? "", context);
-                sb.AppendLine($"{indent}{prop}: {formattedValue};");
+                var formattedValue = FormatValue(style.Value, context);
+                var important = style.Important ? " !important" : "";
+                
+                if (context.IncludeComments && !string.IsNullOrEmpty(style.Comment))
+                {
+                    sb.AppendLine($"{indent}  // {style.Comment}");
+                }
+
+                sb.AppendLine(context.Minify
+                    ? $"{style.Property}:{formattedValue}{important};"
+                    : $"{indent}  {style.Property}: {formattedValue}{important};");
             }
+
+            sb.AppendLine($"{indent}}}");
         }
 
         private void WriteUtilities(
@@ -153,63 +249,50 @@ namespace YCSS.Core.Compilation.Formatters
             StyleDefinition definition,
             FormatterContext context)
         {
-            // Generate utility mixins
-            sb.AppendLine("// Utility Mixins");
-            foreach (var (name, value) in definition.Tokens)
+            if (context.IncludeComments)
             {
-                if (name.StartsWith("color"))
-                {
-                    sb.AppendLine($"@mixin text-{name} {{");
-                    sb.AppendLine($"  color: ${name};");
-                    sb.AppendLine("}");
-
-                    sb.AppendLine($"@mixin bg-{name} {{");
-                    sb.AppendLine($"  background-color: ${name};");
-                    sb.AppendLine("}");
-                }
-                else if (name.StartsWith("spacing"))
-                {
-                    sb.AppendLine($"@mixin p-{name} {{");
-                    sb.AppendLine($"  padding: ${name};");
-                    sb.AppendLine("}");
-
-                    sb.AppendLine($"@mixin m-{name} {{");
-                    sb.AppendLine($"  margin: ${name};");
-                    sb.AppendLine("}");
-                }
+                sb.AppendLine("// Utility Classes");
             }
 
-            // Generate utility classes
-            sb.AppendLine("\n// Utility Classes");
-            foreach (var (name, _) in definition.Tokens)
+            foreach (var token in definition.Tokens.Values)
             {
-                if (name.StartsWith("color"))
+                if (token.Name.StartsWith("color"))
                 {
-                    sb.AppendLine($".text-{name} {{ @include text-{name}; }}");
-                    sb.AppendLine($".bg-{name} {{ @include bg-{name}; }}");
+                    sb.AppendLine($".text-{token.Name} {{");
+                    sb.AppendLine($"  color: ${token.Name};");
+                    sb.AppendLine("}");
+
+                    sb.AppendLine($".bg-{token.Name} {{");
+                    sb.AppendLine($"  background-color: ${token.Name};");
+                    sb.AppendLine("}");
                 }
-                else if (name.StartsWith("spacing"))
+                else if (token.Name.StartsWith("spacing"))
                 {
-                    sb.AppendLine($".p-{name} {{ @include p-{name}; }}");
-                    sb.AppendLine($".m-{name} {{ @include m-{name}; }}");
+                    sb.AppendLine($".p-{token.Name} {{");
+                    sb.AppendLine($"  padding: ${token.Name};");
+                    sb.AppendLine("}");
+
+                    sb.AppendLine($".m-{token.Name} {{");
+                    sb.AppendLine($"  margin: ${token.Name};");
+                    sb.AppendLine("}");
                 }
             }
         }
 
         private string FormatValue(string value, FormatterContext context)
         {
-            // Convert CSS var() to SCSS variables
-            if (value.StartsWith("var(--"))
+            // Replace CSS variables with SCSS variables
+            if (value.Contains("var(--"))
             {
-                value = "$" + value.Substring(6, value.Length - 7);
+                value = value.Replace("var(--", "$");
+                value = value.Replace(")", "");
             }
 
-            // Handle theme values
+            // Replace theme function
             if (context.Theme != null && value.Contains("theme("))
             {
-                value = value.Replace(
-                    "theme(",
-                    $"${context.Theme}-");
+                value = value.Replace("theme(", $"${context.Theme}-");
+                value = value.Replace(")", "");
             }
 
             return value;

@@ -1,12 +1,15 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using static YCSS.Core.Compilation.StyleCompiler;
 
 namespace YCSS.Core.Compilation
 {
+    public enum OutputFormat
+    {
+        CSS,
+        SCSS,
+        Tailwind,
+        Tokens
+    }
+
     public record CompilerOptions
     {
         public OutputFormat Format { get; init; } = OutputFormat.CSS;

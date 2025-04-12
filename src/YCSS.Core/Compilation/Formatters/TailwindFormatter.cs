@@ -4,11 +4,11 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Text.RegularExpressions;
-using System.Threading.Tasks;
+using YCSS.Core.Models;
 
 namespace YCSS.Core.Compilation.Formatters
 {
-    public class TailwindFormatter : IStyleFormatter
+    public class TailwindFormatter : IOutputFormatter
     {
         private readonly ILogger<TailwindFormatter> _logger;
         private static readonly Regex ColorRegex = new(@"^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$");
@@ -23,21 +23,35 @@ namespace YCSS.Core.Compilation.Formatters
         {
             var sb = new StringBuilder();
             var context = new FormatterContext(
-                Variables: definition.Tokens,
                 Minify: options.Optimize,
                 Theme: options.Theme,
-                IncludeSourceMap: options.GenerateSourceMap
+                IncludeSourceMap: false,
+                IncludeComments: !options.Optimize
             );
 
             try
             {
-                // Write Tailwind configuration
-                WriteConfig(sb, definition, context);
-
-                // Write component classes
-                foreach (var (name, component) in definition.Components)
+                if (!options.TokensOnly)
                 {
-                    WriteComponent(sb, name, component, context);
+                    // Write Tailwind configuration
+                    WriteConfig(sb, definition, context);
+
+                    // Write component classes
+                    foreach (var (name, component) in definition.Components)
+                    {
+                        WriteComponent(sb, name, component, context);
+                    }
+
+                    // Write street styles
+                    foreach (var (name, style) in definition.StreetStyles)
+                    {
+                        WriteStreetStyle(sb, name, style, context);
+                    }
+                }
+                else
+                {
+                    // Tokens only
+                    sb.Append(FormatTokens(definition, options));
                 }
 
                 return sb.ToString();
@@ -47,6 +61,20 @@ namespace YCSS.Core.Compilation.Formatters
                 _logger.LogError(ex, "Error formatting Tailwind CSS");
                 throw;
             }
+        }
+
+        public string FormatTokens(StyleDefinition definition, CompilerOptions options)
+        {
+            var sb = new StringBuilder();
+            var context = new FormatterContext(
+                Minify: options.Optimize,
+                Theme: options.Theme,
+                IncludeSourceMap: false,
+                IncludeComments: !options.Optimize
+            );
+
+            WriteConfig(sb, definition, context);
+            return sb.ToString();
         }
 
         private void WriteConfig(
@@ -64,24 +92,24 @@ namespace YCSS.Core.Compilation.Formatters
             var spacingTokens = new Dictionary<string, string>();
             var otherTokens = new Dictionary<string, Dictionary<string, string>>();
 
-            foreach (var (key, value) in definition.Tokens)
+            foreach (var token in definition.Tokens.Values)
             {
-                var strValue = value.ToString() ?? "";
+                var strValue = token.Value ?? "";
 
-                if (key.StartsWith("color") && ColorRegex.IsMatch(strValue))
+                if (token.Name.StartsWith("color") && ColorRegex.IsMatch(strValue))
                 {
-                    var name = key.Replace("color-", "");
+                    var name = token.Name.Replace("color-", "");
                     colorTokens[name] = strValue;
                 }
-                else if (key.StartsWith("spacing") && SpacingRegex.IsMatch(strValue))
+                else if (token.Name.StartsWith("spacing") && SpacingRegex.IsMatch(strValue))
                 {
-                    var name = key.Replace("spacing-", "");
+                    var name = token.Name.Replace("spacing-", "");
                     spacingTokens[name] = strValue;
                 }
                 else
                 {
-                    var category = key.Split('-')[0];
-                    var name = key.Substring(category.Length + 1);
+                    var category = token.Name.Split('-')[0];
+                    var name = token.Name.Substring(category.Length + 1);
 
                     if (!otherTokens.ContainsKey(category))
                     {
@@ -148,13 +176,31 @@ namespace YCSS.Core.Compilation.Formatters
             sb.AppendLine("    plugin(function({ addComponents }) {");
             sb.AppendLine("      addComponents({");
 
+            // Write structured components
             foreach (var (name, component) in definition.Components)
             {
                 WriteComponentStyle(sb, name, component, context);
             }
 
+            // Write street styles
+            foreach (var (name, style) in definition.StreetStyles)
+            {
+                WriteStreetStyle(sb, name, style, context);
+            }
+
             sb.AppendLine("      });");
             sb.AppendLine("    }),");
+        }
+
+        private void WriteStreetStyle(
+            StringBuilder sb,
+            string name,
+            ComponentBaseDefinition style,
+            FormatterContext context)
+        {
+            sb.AppendLine($"        '.{style.Class}': {{");
+            WriteComponentBase(sb, style, "          ");
+            sb.AppendLine("        },");
         }
 
         private void WriteComponent(
@@ -183,7 +229,7 @@ namespace YCSS.Core.Compilation.Formatters
             {
                 var childClass = child.Class ?? $"{className}__{childName}";
                 sb.AppendLine($"    .{childClass} {{");
-                WriteStyles(sb, child.Styles, "      ");
+                WriteComponentBase(sb, child, "      ");
                 sb.AppendLine("    }");
             }
 
@@ -200,20 +246,52 @@ namespace YCSS.Core.Compilation.Formatters
         {
             var className = component.Class ?? name;
             sb.AppendLine($"        '.{className}': {{");
-            WriteStyles(sb, component.Styles, "          ");
+            
+            if (component.Base != null)
+            {
+                WriteComponentBase(sb, component.Base, "          ");
+            }
+
             sb.AppendLine("        },");
         }
 
-        private void WriteStyles(
+        private void WriteComponentBase(
             StringBuilder sb,
-            Dictionary<string, object> styles,
+            ComponentBaseDefinition component,
             string indent)
         {
-            foreach (var (prop, value) in styles)
+            foreach (var style in component.Styles)
             {
-                var tailwindProp = ConvertToTailwindProperty(prop);
-                var tailwindValue = ConvertToTailwindValue(value?.ToString() ?? "");
-                sb.AppendLine($"{indent}{tailwindProp}: '{tailwindValue}',");
+                var tailwindProp = ConvertToTailwindProperty(style.Property);
+                var tailwindValue = ConvertToTailwindValue(style.Value);
+                var important = style.Important ? " !important" : "";
+                sb.AppendLine($"{indent}{tailwindProp}: '{tailwindValue}{important}',");
+            }
+
+            // Write media queries
+            foreach (var (query, styles) in component.MediaQueries)
+            {
+                sb.AppendLine($"{indent}['@media {query}']: {{");
+                foreach (var (prop, value) in styles)
+                {
+                    var tailwindProp = ConvertToTailwindProperty(prop);
+                    var tailwindValue = ConvertToTailwindValue(value);
+                    sb.AppendLine($"{indent}  {tailwindProp}: '{tailwindValue}',");
+                }
+                sb.AppendLine($"{indent}}},");
+            }
+
+            // Write states
+            foreach (var (state, styles) in component.States)
+            {
+                sb.AppendLine($"{indent}['&:{state}']: {{");
+                foreach (var (prop, value) in styles)
+                {
+                    var tailwindProp = ConvertToTailwindProperty(prop);
+                    var tailwindValue = ConvertToTailwindValue(value);
+                    sb.AppendLine($"{indent}  {tailwindProp}: '{tailwindValue}',");
+                }
+                sb.AppendLine($"{indent}}},");
             }
         }
 

@@ -1,35 +1,17 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+using System.IO;
+using YCSS.Core.Models;
 
 namespace YCSS.Core.Compilation
 {
-    public class StyleCompiler
+    public interface IStyleCompiler
     {
-        public enum OutputFormat
-        {
-            CSS,
-            SCSS,
-            Tailwind,
-            Tokens
-        }
+        string CompileStyles(StyleDefinition styles, CompilerOptions options);
+    }
 
-        public record StyleDefinition
-        {
-            public Dictionary<string, object> Tokens { get; init; } = new();
-            public Dictionary<string, ComponentDefinition> Components { get; init; } = new();
-        }
-
-        public record ComponentDefinition
-        {
-            public string? Class { get; init; }
-            public Dictionary<string, object> Styles { get; init; } = new();
-            public Dictionary<string, ComponentDefinition> Children { get; init; } = new();
-            public Dictionary<string, Dictionary<string, object>> Variants { get; init; } = new();
-        }
-
+    public class StyleCompiler : IStyleCompiler
+    {
         public string CompileStyles(StyleDefinition styles, CompilerOptions options)
         {
             var writer = new StringWriter();
@@ -48,6 +30,12 @@ namespace YCSS.Core.Compilation
                     WriteComponent(writer, name, component, options);
                 }
 
+                // Generate street styles
+                foreach (var (name, style) in styles.StreetStyles)
+                {
+                    WriteStreetStyle(writer, name, style, options);
+                }
+
                 // Generate utility classes if requested
                 if (options.UseUtilities)
                 {
@@ -58,31 +46,31 @@ namespace YCSS.Core.Compilation
             return writer.ToString();
         }
 
-        private void WriteTokens(TextWriter writer, Dictionary<string, object> tokens, CompilerOptions options)
+        private void WriteTokens(TextWriter writer, Dictionary<string, TokenDefinition> tokens, CompilerOptions options)
         {
             switch (options.Format)
             {
                 case OutputFormat.CSS:
                     writer.WriteLine(":root {");
-                    foreach (var (name, value) in tokens)
+                    foreach (var token in tokens.Values)
                     {
-                        writer.WriteLine($"  --{name}: {value};");
+                        writer.WriteLine($"  --{token.Name}: {token.Value};");
                     }
                     writer.WriteLine("}\n");
                     break;
 
                 case OutputFormat.SCSS:
-                    foreach (var (name, value) in tokens)
+                    foreach (var token in tokens.Values)
                     {
-                        writer.WriteLine($"${name}: {value};");
+                        writer.WriteLine($"${token.Name}: {token.Value};");
                     }
                     writer.WriteLine();
                     break;
 
                 case OutputFormat.Tokens:
-                    foreach (var (name, value) in tokens)
+                    foreach (var token in tokens.Values)
                     {
-                        writer.WriteLine($"{name}: {value}");
+                        writer.WriteLine($"{token.Name}: {token.Value}");
                     }
                     break;
             }
@@ -94,43 +82,82 @@ namespace YCSS.Core.Compilation
             ComponentDefinition component,
             CompilerOptions options)
         {
-            var className = component.Class ?? name;
-            var selector = FormatSelector(className, options);
-
-            writer.WriteLine($"{selector} {{");
-            WriteStyles(writer, component.Styles, options);
-            writer.WriteLine("}");
-
-            // Write child components
-            foreach (var (childName, child) in component.Children)
+            // Write base component
+            if (component.Base != null)
             {
-                var childSelector = FormatSelector($"{className}__{childName}", options);
-                writer.WriteLine($"{childSelector} {{");
-                WriteStyles(writer, child.Styles, options);
-                writer.WriteLine("}");
+                WriteComponentBase(writer, component.Base, options);
+            }
+
+            // Write parts
+            foreach (var (partName, part) in component.Parts)
+            {
+                WriteComponentBase(writer, part, options);
             }
 
             // Write variants
-            foreach (var (variantName, styles) in component.Variants)
+            foreach (var (variantName, variant) in component.Variants)
             {
-                var variantSelector = FormatSelector($"{className}--{variantName}", options);
-                writer.WriteLine($"{variantSelector} {{");
-                WriteStyles(writer, styles, options);
-                writer.WriteLine("}");
+                WriteComponentBase(writer, variant, options);
             }
 
             writer.WriteLine();
         }
 
-        private void WriteStyles(
+        private void WriteComponentBase(
             TextWriter writer,
-            Dictionary<string, object> styles,
+            ComponentBaseDefinition component,
             CompilerOptions options)
         {
-            foreach (var (prop, value) in styles)
+            var selector = FormatSelector(component.Class, options);
+            writer.WriteLine($"{selector} {{");
+            WriteStyles(writer, component.Styles, options);
+            writer.WriteLine("}");
+
+            // Write media queries
+            foreach (var (query, styles) in component.MediaQueries)
             {
-                var formattedValue = FormatValue(value.ToString()!, options);
-                writer.WriteLine($"  {prop}: {formattedValue};");
+                writer.WriteLine($"@media {query} {{");
+                writer.WriteLine($"  {selector} {{");
+                foreach (var (prop, value) in styles)
+                {
+                    writer.WriteLine($"    {prop}: {value};");
+                }
+                writer.WriteLine("  }");
+                writer.WriteLine("}");
+            }
+
+            // Write states
+            foreach (var (state, styles) in component.States)
+            {
+                writer.WriteLine($"{selector}:{state} {{");
+                foreach (var (prop, value) in styles)
+                {
+                    writer.WriteLine($"  {prop}: {value};");
+                }
+                writer.WriteLine("}");
+            }
+        }
+
+        private void WriteStreetStyle(
+            TextWriter writer,
+            string name,
+            ComponentBaseDefinition style,
+            CompilerOptions options)
+        {
+            WriteComponentBase(writer, style, options);
+            writer.WriteLine();
+        }
+
+        private void WriteStyles(
+            TextWriter writer,
+            List<StyleDefinition> styles,
+            CompilerOptions options)
+        {
+            foreach (var style in styles)
+            {
+                var formattedValue = FormatValue(style.Value, options);
+                var important = style.Important ? " !important" : "";
+                writer.WriteLine($"  {style.Property}: {formattedValue}{important};");
             }
         }
 
@@ -140,8 +167,9 @@ namespace YCSS.Core.Compilation
             CompilerOptions options)
         {
             // Generate utility classes based on tokens
-            foreach (var (name, value) in styles.Tokens)
+            foreach (var token in styles.Tokens.Values)
             {
+                var name = token.Name;
                 if (name.StartsWith("color"))
                 {
                     writer.WriteLine($".text-{name} {{ color: var(--{name}); }}");
@@ -157,6 +185,9 @@ namespace YCSS.Core.Compilation
 
         private string FormatSelector(string name, CompilerOptions options)
         {
+            if (string.IsNullOrEmpty(name))
+                throw new ArgumentException("Class name cannot be empty", nameof(name));
+                
             return options.Format switch
             {
                 OutputFormat.Tailwind => $"@layer components {{ .{name} }}",
