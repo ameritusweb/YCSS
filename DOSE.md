@@ -1,6 +1,8 @@
 ## 🏛️ DOSE: Department of Style Efficiency
 _A dose of cure for all your CSS symptoms._
 
+![DOSE](https://raw.githubusercontent.com/ameritusweb/ycss/main/dose.png)
+
 ### 📊 Organizational Chart
 ```
                          +---------------------------+
