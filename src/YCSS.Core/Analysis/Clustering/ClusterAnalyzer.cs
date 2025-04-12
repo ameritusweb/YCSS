@@ -1,0 +1,87 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+
+namespace YCSS.Core.Analysis.Clustering
+{
+    public class ClusterAnalyzer
+    {
+        public void AnalyzeClusters(List<StyleCluster> clusters, int indent = 0)
+        {
+            foreach (var cluster in clusters)
+            {
+                // Print cluster information
+                Console.WriteLine($"{new string(' ', indent)}Cluster (Cohesion: {cluster.Cohesion:F2}, Frequency: {cluster.Frequency})");
+
+                Console.WriteLine($"{new string(' ', indent)}Properties:");
+                foreach (var prop in cluster.Properties)
+                {
+                    Console.WriteLine($"{new string(' ', indent + 2)}- {prop}");
+                }
+
+                Console.WriteLine($"{new string(' ', indent)}Common Values:");
+                foreach (var value in cluster.Values.Take(5))
+                {
+                    Console.WriteLine($"{new string(' ', indent + 2)}- {value}");
+                }
+
+                // Generate suggestions
+                GenerateSuggestions(cluster, indent);
+
+                // Recursively analyze children
+                if (cluster.Children.Any())
+                {
+                    Console.WriteLine($"{new string(' ', indent)}Sub-patterns:");
+                    AnalyzeClusters(cluster.Children, indent + 2);
+                }
+
+                Console.WriteLine();
+            }
+        }
+
+        private void GenerateSuggestions(StyleCluster cluster, int indent)
+        {
+            Console.WriteLine($"{new string(' ', indent)}Suggestions:");
+
+            // Suggest utility class for highly cohesive groups
+            if (cluster.Cohesion > 0.8 && cluster.Frequency >= 3)
+            {
+                Console.WriteLine($"{new string(' ', indent + 2)}• Create a utility class for these highly related properties");
+                Console.WriteLine($"{new string(' ', indent + 4)}Example:");
+                Console.WriteLine($"{new string(' ', indent + 4)}.util-{GetClusterName(cluster)} {{");
+                foreach (var prop in cluster.Properties)
+                {
+                    Console.WriteLine($"{new string(' ', indent + 6)}{prop}: [most common value];");
+                }
+                Console.WriteLine($"{new string(' ', indent + 4)}}}");
+            }
+
+            // Suggest variables for frequently recurring values
+            var commonValues = cluster.Values
+                .GroupBy(v => v)
+                .Where(g => g.Count() >= 2)
+                .OrderByDescending(g => g.Count())
+                .Take(3);
+
+            foreach (var value in commonValues)
+            {
+                Console.WriteLine($"{new string(' ', indent + 2)}• Consider creating a variable for value '{value.Key}' (used {value.Count()} times)");
+            }
+
+            // Suggest pattern abstraction for deep hierarchies
+            if (cluster.Children.Count >= 2)
+            {
+                Console.WriteLine($"{new string(' ', indent + 2)}• This pattern has multiple variations - consider creating a base abstraction");
+            }
+        }
+
+        private string GetClusterName(StyleCluster cluster)
+        {
+            // Generate a semantic name based on properties
+            var key = string.Join("-", cluster.Properties.OrderBy(p => p));
+            return $"pattern-{Math.Abs(key.GetHashCode() % 1000)}";
+        }
+    }
+}
